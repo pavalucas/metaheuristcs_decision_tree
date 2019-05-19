@@ -1,0 +1,20 @@
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "g++ build active file",
+            "command": "/usr/bin/g++",
+            "args": [
+                "-std=c++11",
+                "-g",
+                "${fileDirname}/main.cpp", "${fileDirname}/Greedy.cpp", "${fileDirname}/Params.cpp", "${fileDirname}/Commandline.h", "${fileDirname}/Solution.h",
+                "-o",
+                "${fileDirname}/../Executables/${fileBasenameNoExtension}"
+            ],
+            "options": {
+                "cwd": "/usr/bin"
+            }
+        }
+    ],
+    "version": "2.0.0"
+}
