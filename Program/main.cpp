@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 			std::cout << "----- STARTING DECISION TREE OPTIMIZATION" << std::endl;
 			params.startTime = clock();
 			Greedy solver(&params, &solution);
-			solver.run();
+			solver.runWithLS();
 			params.endTime = clock();
 			std::cout << "----- DECISION TREE OPTIMIZATION COMPLETED IN " << (params.endTime - params.startTime) / (double)CLOCKS_PER_SEC << "(s)" << std::endl;
 			

@@ -7,7 +7,11 @@
             "args": [
                 "-std=c++11",
                 "-g",
-                "${fileDirname}/main.cpp", "${fileDirname}/Greedy.cpp", "${fileDirname}/Params.cpp", "${fileDirname}/Commandline.h", "${fileDirname}/Solution.h",
+                "${fileDirname}/main.cpp", 
+                "${fileDirname}/Greedy.cpp", 
+                "${fileDirname}/Params.cpp", 
+                "${fileDirname}/Commandline.h",
+                "${fileDirname}/Solution.cpp",
                 "-o",
                 "${fileDirname}/../Executables/${fileBasenameNoExtension}"
             ],

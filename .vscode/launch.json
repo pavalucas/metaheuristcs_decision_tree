@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/../Executables/${fileBasenameNoExtension}",
-            "args": ["${fileDirname}/../Datasets/", "all", "-sol", "${fileDirname}/../Solutions/CART"],
+            "args": ["${fileDirname}/../Datasets/", "all", "-sol", "${fileDirname}/../Solutions/LS_Random"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

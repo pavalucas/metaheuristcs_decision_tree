@@ -8,7 +8,12 @@ void Greedy::run()
 
 void Greedy::runWithLS()
 {
-	
+	recursiveConstruction(0, 0);
+	solution->eraseSubTree(1, 1);
+	solution->eraseSubTree(2, 1);
+	solution->applySplit(0);
+	recursiveConstruction(1, 1);
+	recursiveConstruction(2, 1);
 }
 
 void Greedy::recursiveConstruction(int node, int level)
@@ -138,27 +143,10 @@ void Greedy::recursiveConstruction(int node, int level)
 		}
 	}
 
-	/* SPECIAL CASE TO HANDLE POSSIBLE CONTADICTIONS IN THE DATA */
-	// (Situations where the same samples have different classes -- In this case no improving split can be found)
-	if (allIdentical) return;
-
 	/* APPLY THE SPLIT AND RECURSIVE CALL */
 	solution->tree[node].splitAttribute = bestSplitAttribute;
 	solution->tree[node].splitValue = bestSplitThrehold;
-	solution->tree[node].nodeType = Node::NODE_INTERNAL;
-	solution->tree[2*node+1].nodeType = Node::NODE_LEAF ;
-	solution->tree[2*node+2].nodeType = Node::NODE_LEAF ;
-	for (int s : solution->tree[node].samples)
-	{ 
-		if ((params->attributeTypes[bestSplitAttribute] == TYPE_NUMERICAL   && params->dataAttributes[s][bestSplitAttribute] < bestSplitThrehold + MY_EPSILON)|| 
-			(params->attributeTypes[bestSplitAttribute] == TYPE_CATEGORICAL && params->dataAttributes[s][bestSplitAttribute] < bestSplitThrehold + MY_EPSILON && params->dataAttributes[s][bestSplitAttribute] > bestSplitThrehold - MY_EPSILON))
-			solution->tree[2*node+1].addSample(s);
-		else
-			solution->tree[2*node+2].addSample(s);
-	}
-	solution->tree[2*node+1].evaluate(); // Setting all other data structures
-	solution->tree[2*node+2].evaluate(); // Setting all other data structures
+	solution->applySplit(node);
 	recursiveConstruction(2*node+1,level+1); // Recursive call
 	recursiveConstruction(2*node+2,level+1); // Recursive call
 }
-
