@@ -43,13 +43,28 @@ Node::Node(Params * params):params(params)
     deleteInformation();
 }
 
+Node Node::copyNode()
+{
+    Node newNode = Node(params);
+    newNode.nodeType = nodeType;
+    newNode.splitAttribute = splitAttribute;
+    newNode.splitValue = splitValue;
+    newNode.nbSamplesClass = nbSamplesClass;
+    newNode.samples = samples;
+    newNode.nbSamplesNode = nbSamplesNode;
+    newNode.majorityClass = majorityClass;
+    newNode.maxSameClass = maxSameClass;
+    newNode.entropy = entropy;
+    newNode.testedSplitValues = testedSplitValues;
+    return newNode;
+}
+
 void Solution::printAndExport(std::string file_name, int seed_rng)
 {
     std::ofstream my_file;
     my_file.open(file_name.data());
     if (my_file.is_open())
     {
-        int nbMisclassifiedSamples = 0;
         std::cout << std::endl << "---------------------------------------- PRINTING SOLUTION ----------------------------------------" << std::endl;
         my_file << std::endl << "---------------------------------------- PRINTING SOLUTION ----------------------------------------" << std::endl;			
         for (int d = 0; d <= params->maxDepth; d++)
@@ -65,7 +80,6 @@ void Solution::printAndExport(std::string file_name, int seed_rng)
                 else if (tree[i].nodeType == Node::NODE_LEAF)
                 {
                     int misclass = tree[i].nbSamplesNode - tree[i].nbSamplesClass[tree[i].majorityClass];
-                    nbMisclassifiedSamples += misclass;
                     std::cout << "(L" << i << ",C" << tree[i].majorityClass << "," << tree[i].nbSamplesClass[tree[i].majorityClass] << "," << misclass << ") ";
                     my_file << "(L" << i << ",C" << tree[i].majorityClass << "," << tree[i].nbSamplesClass[tree[i].majorityClass] << "," << misclass << ") ";
                 }
@@ -90,16 +104,28 @@ void Solution::printAndExport(std::string file_name, int seed_rng)
         std::cout << "----- IMPOSSIBLE TO OPEN SOLUTION FILE: " << params->pathToSolution << " ----- " << std::endl;
 }
 
-Solution::Solution(Params * params):params(params)
+Solution::Solution(Params * params, bool addSamplesToRoot):params(params)
 {
+    // Setting number of missclassified samples to zero
+    nbMisclassifiedSamples = 0;
+
     // Initializing tree data structure and the nodes inside -- The size of the tree is 2^{maxDepth} - 1
     tree = std::vector <Node>(pow(2,params->maxDepth+1)-1,Node(params));
 
     // The tree is initially made of a single leaf (the root node)
-    tree[0].nodeType = Node::NODE_LEAF;
-    for (int i = 0; i < params->nbSamples; i++) 
-        tree[0].addSample(i);
-    tree[0].evaluate();
+    if(addSamplesToRoot)
+    {
+        tree[0].nodeType = Node::NODE_LEAF;
+        for (int i = 0; i < params->nbSamples; i++) 
+            tree[0].addSample(i);
+        tree[0].evaluate();
+    }
+}
+
+Solution::~Solution()
+{
+    nbMisclassifiedSamples = 0;
+    tree.clear();
 }
 
 void Solution::eraseSubTree(int node, int level)
@@ -137,4 +163,29 @@ void Solution::applySplit(int node)
 	}
 	tree[2*node+1].evaluate(); // Setting all other data structures
 	tree[2*node+2].evaluate(); // Setting all other data structures
+}
+
+int Solution::getNumberMissclassifiedSamples()
+{
+    int result = 0;
+    for (int i = 0; i < pow(2, params->maxDepth + 1) - 1; i++)
+    {
+        if (tree[i].nodeType == Node::NODE_LEAF)
+        {
+            int misclass = tree[i].nbSamplesNode - tree[i].nbSamplesClass[tree[i].majorityClass];
+            result += misclass;
+        }
+    }
+    return result;
+}
+
+Solution* Solution::copySolution()
+{
+    Solution* newSolution = new Solution(params, false);
+    newSolution->nbMisclassifiedSamples = nbMisclassifiedSamples;
+    for (int i = 0; i < pow(2, params->maxDepth + 1) - 1; i++)
+    {
+        newSolution->tree[i] = tree[i].copyNode();
+    }
+    return newSolution;
 }

@@ -20,12 +20,15 @@ public:
 	int majorityClass;										// Majority class in this node
 	int maxSameClass;										// Maximum number of elements of the same class in this node
 	double entropy;											// Entropy in this node
+	std::set<double> testedSplitValues;						// Threshold values already tested by local search
 	
 	void evaluate();
 
 	void addSample(int i);
 
 	void deleteInformation();
+
+	Node copyNode();
 
 	Node(Params * params);
 };
@@ -46,13 +49,23 @@ public:
 	// Right child of tree[k]: tree[2*k+2]
 	std::vector <Node> tree;
 
+	int nbMisclassifiedSamples;
+
 	// Prints the final solution
 	void printAndExport(std::string file_name, int seed_rng);
 
-	Solution(Params * params);
+	Solution(Params * params, bool addSamplesToRoot);
+
+	~Solution();
 
 	void eraseSubTree(int node, int level);
 
 	void applySplit(int node);
+
+	int getNumberMissclassifiedSamples();
+
+	Solution* copySolution();
+
+	void insertInTestedValues(int node, double splitValue);
 };
 #endif

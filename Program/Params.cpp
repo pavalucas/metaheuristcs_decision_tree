@@ -3,8 +3,8 @@
 Params::Params(std::string pathToInstance, std::string pathToSolution, int seedRNG, int maxDepth, clock_t maxTime) : seed(seedRNG), pathToInstance(pathToInstance), pathToSolution(pathToSolution), maxDepth(maxDepth), maxTime(maxTime)
 {
 	// Initializing random number generator here (if you have nondeterministic components)
-	// std::srand(seedRNG);
-	// std::cout << "----- INITIALIZING RNG WITH SEED: " << seedRNG << std::endl;
+	std::srand(seedRNG);
+	std::cout << "----- INITIALIZING RNG WITH SEED: " << seedRNG << std::endl;
 
 	std::ifstream inputFile(pathToInstance.c_str());
 	if (inputFile.is_open())

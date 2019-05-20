@@ -16,18 +16,19 @@ int main(int argc, char *argv[])
 			Params params(dataset_path_vec[i], output_path_vec[i], c.get_seed(), c.get_maxDepth(), c.get_cpu_time() * CLOCKS_PER_SEC);
 
 			// Initialization of a solution structure
-			Solution solution(&params);
+			Solution* solution = new Solution(&params, true);
 
 			// Run the greedy algorithm 
 			std::cout << "----- STARTING DECISION TREE OPTIMIZATION" << std::endl;
 			params.startTime = clock();
-			Greedy solver(&params, &solution);
+			Greedy solver(&params, solution);
 			solver.runWithLS();
+			solution = solver.getNewSolution();
 			params.endTime = clock();
 			std::cout << "----- DECISION TREE OPTIMIZATION COMPLETED IN " << (params.endTime - params.startTime) / (double)CLOCKS_PER_SEC << "(s)" << std::endl;
 			
 			// Printing the solution and exporting statistics (also export results into a file)
-			solution.printAndExport(output_path_vec[i], c.get_seed());
+			solution->printAndExport(output_path_vec[i], c.get_seed());
 			std::cout << "----- END OF ALGORITHM" << std::endl;
 		}
 	}

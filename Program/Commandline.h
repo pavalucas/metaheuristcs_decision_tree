@@ -73,15 +73,6 @@ private:
 			dataset_name_vec_ = {to_parse};
 			dataset_path_vec_ = {instance_path_ + to_parse};
 		}
-		
-		// char caractere1 = '/';
-		// char caractere2 = '\\';
-
-		// int position = (int)to_parse.find_last_of(caractere1);
-		// int position2 = (int)to_parse.find_last_of(caractere2);
-		// if (position2 > position) position = position2;
-
-		// dataset_name_ = to_parse.substr(position + 1, to_parse.length() - 1);
 	}
 
 public:
@@ -113,7 +104,7 @@ public:
 					cpu_time_ = atoi(argv[i+1]);
 				else if (std::string(argv[i]) == "-sol")
 					set_output_name(std::string(argv[i+1]));
-				else if (std::string(argv[i]) == "-seed_")
+				else if (std::string(argv[i]) == "-seed")
 					seed_ = atoi(argv[i+1]);
 				else if (std::string(argv[i]) == "-depth")
 					max_depth_ = atoi(argv[i+1]);

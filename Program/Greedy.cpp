@@ -4,16 +4,105 @@ void Greedy::run()
 {
 	// Call the recursive procedure on the root node at level 0
 	recursiveConstruction(0, 0);
+	solution->nbMisclassifiedSamples = solution->getNumberMissclassifiedSamples();
 }
 
 void Greedy::runWithLS()
 {
-	recursiveConstruction(0, 0);
-	solution->eraseSubTree(1, 1);
-	solution->eraseSubTree(2, 1);
-	solution->applySplit(0);
-	recursiveConstruction(1, 1);
-	recursiveConstruction(2, 1);
+	run();
+	localSearch(0, 0);
+}
+
+void Greedy::runLookAhead()
+{
+	
+}
+
+void Greedy::localSearch(int node, int level)
+{
+	if(level > params->maxDepth || solution->tree[node].nodeType == Node::NODE_LEAF || 
+		solution->nbMisclassifiedSamples == 0) 
+	{
+		return;
+	}
+	for(int curRep = 0; curRep < MAX_REPETITIONS_LS; curRep++)
+	{
+		previousSolution = solution->copySolution();
+		bool allValuesTested = chooseRandomValueForSplitAttribute(node);
+		if(allValuesTested)
+		{
+			delete previousSolution;
+			previousSolution = nullptr;
+			localSearch(2 * node + 1, level + 1);
+			localSearch(2 * node + 2, level + 1);
+			return;
+		}
+		solution->eraseSubTree(2 * node + 1, level + 1);
+		solution->eraseSubTree(2 * node + 2, level + 1);
+		solution->applySplit(node);
+		recursiveConstruction(2 * node + 1, level + 1);
+		recursiveConstruction(2 * node + 2, level + 1);
+		int newNbMisclassifiedSamples = solution->getNumberMissclassifiedSamples();
+		if(newNbMisclassifiedSamples < solution->nbMisclassifiedSamples) {
+			solution->nbMisclassifiedSamples = newNbMisclassifiedSamples;
+			delete previousSolution;
+			previousSolution = nullptr;
+		}
+		else
+		{
+			Solution* tmp = solution;
+			solution = previousSolution;
+			delete tmp;
+			previousSolution = nullptr;
+		}
+	}
+	localSearch(2 * node + 1, level + 1);
+	localSearch(2 * node + 2, level + 1);
+}
+
+bool Greedy::chooseRandomValueForSplitAttribute(int node)
+{
+	int curAtt = solution->tree[node].splitAttribute;
+	solution->tree[node].testedSplitValues.insert(solution->tree[node].splitValue);
+	previousSolution->tree[node].testedSplitValues.insert(solution->tree[node].splitValue);
+	std::vector<double> attributeLevelsWithoutBestValue;
+	
+	if (params->attributeTypes[curAtt] == TYPE_NUMERICAL)
+	{
+		std::set<double> attributeLevels;
+		for (int s : solution->tree[node].samples)
+		{
+			attributeLevels.insert(params->dataAttributes[s][curAtt]);
+		}
+		for (double attributeValue : attributeLevels)
+		{
+			if(solution->tree[node].testedSplitValues.find(attributeValue) ==
+				solution->tree[node].testedSplitValues.end())
+			{
+				attributeLevelsWithoutBestValue.push_back(attributeValue);
+			}
+		}
+	}
+	else
+	{
+		for (int attLevel = 0; attLevel < params->nbLevels[curAtt]; attLevel++)
+		{
+			if(solution->tree[node].testedSplitValues.find(attLevel) ==
+				solution->tree[node].testedSplitValues.end())
+			{
+				attributeLevelsWithoutBestValue.push_back(attLevel);
+			}
+		}
+	}
+	if(attributeLevelsWithoutBestValue.size() == 0)
+	{
+		return true;
+	}
+	int randomIndex = rand() % attributeLevelsWithoutBestValue.size();
+	solution->tree[node].splitValue = attributeLevelsWithoutBestValue[randomIndex];
+	solution->tree[node].testedSplitValues.insert(solution->tree[node].splitValue);
+	previousSolution->tree[node].testedSplitValues.insert(solution->tree[node].splitValue);
+	return false;
 }
 
 void Greedy::recursiveConstruction(int node, int level)
@@ -108,9 +197,9 @@ void Greedy::recursiveConstruction(int node, int level)
 			}
 
 			// Calculate information gain for a split at each possible level of attribute c
-			for (int level = 0; level < params->nbLevels[att]; level++)
+			for (int attLevel = 0; attLevel < params->nbLevels[att]; attLevel++)
 			{
-				if (nbSamplesLevel[level] > 0 && nbSamplesLevel[level] < nbSamplesNode)
+				if (nbSamplesLevel[attLevel] > 0 && nbSamplesLevel[attLevel] < nbSamplesNode)
 				{
 					// Evaluate entropy of the two resulting sample sets
 					allIdentical = false;
@@ -118,25 +207,25 @@ void Greedy::recursiveConstruction(int node, int level)
 					double entropyOthers = 0.0;
 					for (int c = 0; c < params->nbClasses; c++)
 					{
-						if (nbSamplesLevelClass[level][c] > 0)
+						if (nbSamplesLevelClass[attLevel][c] > 0)
 						{
-							double fracLevel = (double)nbSamplesLevelClass[level][c] / (double)nbSamplesLevel[level] ;
+							double fracLevel = (double)nbSamplesLevelClass[attLevel][c] / (double)nbSamplesLevel[attLevel] ;
 							entropyLevel -= fracLevel * log2(fracLevel);
 						}
-						if (nbSamplesClass[c] - nbSamplesLevelClass[level][c] > 0)
+						if (nbSamplesClass[c] - nbSamplesLevelClass[attLevel][c] > 0)
 						{
-							double fracOthers = (double)(nbSamplesClass[c] - nbSamplesLevelClass[level][c]) / (double)(nbSamplesNode - nbSamplesLevel[level]);
+							double fracOthers = (double)(nbSamplesClass[c] - nbSamplesLevelClass[attLevel][c]) / (double)(nbSamplesNode - nbSamplesLevel[attLevel]);
 							entropyOthers -= fracOthers * log2(fracOthers);
 						}
 					}
 
 					// Evaluate the information gain and store if this is the best option found until now
-					double informationGain = originalEntropy - ((double)nbSamplesLevel[level] *entropyLevel + (double)(nbSamplesNode - nbSamplesLevel[level])*entropyOthers) / (double)nbSamplesNode;
+					double informationGain = originalEntropy - ((double)nbSamplesLevel[attLevel] *entropyLevel + (double)(nbSamplesNode - nbSamplesLevel[attLevel])*entropyOthers) / (double)nbSamplesNode;
 					if (informationGain > bestInformationGain)
 					{
 						bestInformationGain = informationGain;
 						bestSplitAttribute = att;
-						bestSplitThrehold = level;
+						bestSplitThrehold = attLevel;
 					}
 				}
 			}
@@ -149,4 +238,9 @@ void Greedy::recursiveConstruction(int node, int level)
 	solution->applySplit(node);
 	recursiveConstruction(2*node+1,level+1); // Recursive call
 	recursiveConstruction(2*node+2,level+1); // Recursive call
+}
+
+Solution* Greedy::getNewSolution()
+{
+	return solution;
 }
