@@ -16,6 +16,10 @@ private:
 	// Recursive call on a given node and level in the tree
 	void recursiveConstruction(int node, int level);
 
+	void recursiveConstructionLookAhead(int node, int level, int k);
+
+	double getEntropyK(int node, int level, int splitAttribute, double splitValue, int k);
+
 	// Calculates the best split threshold for a continuous attribute
 	// Complexity proportional to the number of samples
 	double calculateBestSplitContinuous(int atributeIndex, const std::vector<int> & samples);
@@ -28,7 +32,11 @@ private:
 
 public:
 
-	int MAX_REPETITIONS_LS = 6;
+	// Number of repetitions of local search in each node
+	int MAX_REPETITIONS_LS = 5;
+
+	// Number of step to look ahead
+	int K = 1;
 
     // Run the algorithm
     void run();

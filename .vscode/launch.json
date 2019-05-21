@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${fileDirname}/../Executables/${fileBasenameNoExtension}",
-            "args": ["${fileDirname}/../Datasets/", "p09.txt", "-sol", "${fileDirname}/../Solutions/K_Look_Ahead",
+            "args": ["${fileDirname}/../Datasets/", "p03.txt", "-sol", "${fileDirname}/../Solutions/K_Look_Ahead",
             "-seed", "7"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

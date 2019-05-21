@@ -9,13 +9,14 @@ void Greedy::run()
 
 void Greedy::runWithLS()
 {
-	run();
+	runLookAhead();
 	localSearch(0, 0);
 }
 
 void Greedy::runLookAhead()
 {
-	
+	recursiveConstructionLookAhead(0, 0, K);
+	solution->nbMisclassifiedSamples = solution->getNumberMissclassifiedSamples();
 }
 
 void Greedy::localSearch(int node, int level)
@@ -238,6 +239,164 @@ void Greedy::recursiveConstruction(int node, int level)
 	solution->applySplit(node);
 	recursiveConstruction(2*node+1,level+1); // Recursive call
 	recursiveConstruction(2*node+2,level+1); // Recursive call
+}
+
+void Greedy::recursiveConstructionLookAhead(int node, int level, int k)
+{
+	/* BASE CASES -- MAXIMUM LEVEL HAS BEEN ATTAINED OR ALL SAMPLES BELONG TO THE SAME CLASS */
+	if (level >= params->maxDepth || solution->tree[node].maxSameClass == solution->tree[node].nbSamplesNode)
+		return;
+
+	/* LOOK FOR A BEST SPLIT */
+	bool allIdentical = true; // To detect contradictory data
+	int nbSamplesNode = solution->tree[node].nbSamplesNode;
+	double originalEntropy = solution->tree[node].entropy;
+	double bestInformationGain = -1.e30;
+	int bestSplitAttribute = -1;
+	double bestSplitThrehold = -1.e30;
+	for (int att = 0; att < params->nbAttributes; att++)
+	{
+		if (params->attributeTypes[att] == TYPE_NUMERICAL)
+		{
+			/* CASE 1) -- FIND SPLIT WITH BEST INFORMATION GAIN FOR NUMERICAL ATTRIBUTE c */
+			 
+			// Define some data structures
+			std::set<double> attributeLevels;							// Store the possible levels of this attribute among the samples (will allow to "skip" samples with equal attribute value)
+			for (int s : solution->tree[node].samples)
+			{
+				attributeLevels.insert(params->dataAttributes[s][att]);
+			}
+			if (attributeLevels.size() <= 1) continue;					// If all sample have the same level for this attribute, it's useless to look for a split
+			else allIdentical = false;
+			for (double attributeValue : attributeLevels) // Go through all possible attribute values in increasing order
+			{
+				// Iterate on all samples with this attributeValue and switch them to the left
+			
+				double childEntropy = getEntropyK(node, level, att, attributeValue, k-1);
+
+				// Evaluate the information gain and store if this is the best option found until now
+				double informationGain = originalEntropy - childEntropy;
+				if (informationGain > bestInformationGain)
+				{
+					bestInformationGain = informationGain;
+					bestSplitAttribute = att;
+					bestSplitThrehold = attributeValue;
+				}
+			}
+		}
+		else 
+		{
+			/* CASE 2) -- FIND BEST SPLIT FOR CATEGORICAL ATTRIBUTE c */
+
+			// Calculate information gain for a split at each possible level of attribute c
+			for (int attLevel = 0; attLevel < params->nbLevels[att]; attLevel++)
+			{
+				// Evaluate entropy of the two resulting sample sets
+				allIdentical = false;
+				double childEntropy = getEntropyK(node, level, att, attLevel, k-1);
+
+				// Evaluate the information gain and store if this is the best option found until now
+				double informationGain = originalEntropy - childEntropy;
+				if (informationGain > bestInformationGain)
+				{
+					bestInformationGain = informationGain;
+					bestSplitAttribute = att;
+					bestSplitThrehold = attLevel;
+				}
+			}
+		}
+	}
+
+	/* APPLY THE SPLIT AND RECURSIVE CALL */
+	solution->tree[node].splitAttribute = bestSplitAttribute;
+	solution->tree[node].splitValue = bestSplitThrehold;
+	solution->applySplit(node);
+	recursiveConstructionLookAhead(2*node+1, level+1, k); // Recursive call
+	recursiveConstructionLookAhead(2*node+2, level+1, k); // Recursive call
+}
+
+double Greedy::getEntropyK(int node, int level, int splitAttribute, double splitValue, int k)
+{
+	/* BASE CASES -- MAXIMUM LEVEL HAS BEEN ATTAINED OR ALL SAMPLES BELONG TO THE SAME CLASS */
+	if (level >= params->maxDepth || solution->tree[node].maxSameClass == solution->tree[node].nbSamplesNode)
+		return 0;
+
+	if(k == 0)
+	{
+		solution->tree[node].splitAttribute = splitAttribute;
+		solution->tree[node].splitValue = splitValue;
+		solution->applySplit(node);
+		double entropyLeft = solution->tree[2 * node + 1].entropy;
+		double entropyRight = solution->tree[2 * node + 2].entropy;
+		int nbSamplesParent = solution->tree[node].nbSamplesNode;
+		int nbSamplesLeftChild = solution->tree[2 * node + 1].nbSamplesNode;
+		int nbSamplesRightChild = solution->tree[2 * node + 2].nbSamplesNode;
+		solution->tree[2 * node + 1].deleteInformation();
+		solution->tree[2 * node + 2].deleteInformation();
+		solution->tree[node].nodeType = Node::NODE_NULL;
+		solution->tree[node].splitAttribute = -1;
+		solution->tree[node].splitValue = -1.e30;
+
+		return ((double)nbSamplesLeftChild * entropyLeft + (double)nbSamplesRightChild * entropyRight) / 
+				(double)nbSamplesParent;
+	}
+
+	if(level + 1 >= params->maxDepth)
+		return getEntropyK(node, level, splitAttribute, splitValue, k-1);
+	solution->tree[node].splitAttribute = splitAttribute;
+	solution->tree[node].splitValue = splitValue;
+	solution->applySplit(node);
+	int nbSamplesParent = solution->tree[node].nbSamplesNode;
+	std::vector<int> childs = {2 * node + 1, 2 * node + 2};
+	double resultEntropy = 0.0;
+	for(int cur_node : childs)
+	{
+		int nbSamplesNode = solution->tree[cur_node].nbSamplesNode;
+		double bestEntropy = 1.e30;
+		for (int att = 0; att < params->nbAttributes; att++)
+		{
+			if (params->attributeTypes[att] == TYPE_NUMERICAL)
+			{
+				/* CASE 1) -- FIND SPLIT WITH BEST INFORMATION GAIN FOR NUMERICAL ATTRIBUTE c */
+				
+				// Define some data structures
+				std::set<double> attributeLevels;							// Store the possible levels of this attribute among the samples (will allow to "skip" samples with equal attribute value)
+				for (int s : solution->tree[cur_node].samples)
+				{
+					attributeLevels.insert(params->dataAttributes[s][att]);
+				}
+				if (attributeLevels.size() <= 1) continue;					// If all sample have the same level for this attribute, it's useless to look for a split
+				for (double attributeValue : attributeLevels) // Go through all possible attribute values in increasing order
+				{					
+					double curEntropy = getEntropyK(cur_node, level + 1, att, attributeValue, k-1);
+					bestEntropy = std::min(curEntropy, bestEntropy);
+				}
+			}
+			else 
+			{
+				/* CASE 2) -- FIND BEST SPLIT FOR CATEGORICAL ATTRIBUTE c */
+
+				// Calculate information gain for a split at each possible level of attribute c
+				for (int attLevel = 0; attLevel < params->nbLevels[att]; attLevel++)
+				{
+					double curEntropy = getEntropyK(cur_node, level + 1, att, attLevel, k-1);
+					bestEntropy = std::min(curEntropy, bestEntropy);
+				}
+			}
+		
+			resultEntropy += ((double)nbSamplesNode * bestEntropy) / (double)nbSamplesParent;
+			solution->tree[2 * cur_node + 1].deleteInformation();
+			solution->tree[2 * cur_node + 2].deleteInformation();
+			solution->tree[cur_node].nodeType = Node::NODE_NULL;
+			solution->tree[cur_node].splitAttribute = -1;
+			solution->tree[cur_node].splitValue = -1.e30;
+		}
+	}
+	solution->tree[2 * node + 1].deleteInformation();
+	solution->tree[2 * node + 2].deleteInformation();
+	solution->tree[node].splitAttribute = -1;
+	solution->tree[node].splitValue = -1.e30;
+	return resultEntropy;
 }
 
 Solution* Greedy::getNewSolution()
